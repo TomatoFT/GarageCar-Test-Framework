@@ -1,0 +1,164 @@
+name: Playwright E2E
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout qa-framework
+        uses: actions/checkout@v4
+
+      - name: Checkout GarageCar
+        uses: actions/checkout@v4
+        with:
+          repository: TomatoFT/GarageCar
+          path: GarageCar
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Bootstrap GarageCar
+        working-directory: GarageCar
+        run: |
+          pip install -r requirements/dev.txt
+          python manage.py migrate
+          python manage.py seed_business_rules
+          python manage.py shell -c "
+          from django.contrib.auth.models import Group, User
+          from apps.accounts.models import StaffProfile
+          u, _ = User.objects.get_or_create(username='opera', defaults={'email': 'opera@example.com'})
+          u.set_password('1'); u.is_staff = True; u.is_superuser = True
+          u.first_name = 'Demo'; u.last_name = 'User'; u.save()
+          g, _ = Group.objects.get_or_create(name='ADMIN'); g.user_set.add(u)
+          StaffProfile.objects.update_or_create(user=u, defaults={'first_name': 'Demo', 'last_name': 'User', 'email': 'opera@example.com', 'mobile': '0900000000', 'address': 'Demo', 'is_admin': True})
+          "
+
+      - name: Seed E2E data (brand + labor rate)
+        working-directory: .
+        env:
+          GARAGE_DIR: ${{ github.workspace }}/GarageCar
+        run: python scripts/seed_e2e_data.py
+
+      - name: Start Django server
+        working-directory: GarageCar
+        run: |
+          python manage.py runserver 8000 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/login/ && break
+            sleep 1
+          done
+
+      - name: Install test framework
+        working-directory: .
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+          cp .env.example .env
+          mkdir -p reports
+
+      - name: Run smoke tests
+        run: |
+          pytest -m smoke --browser chromium \
+            --tracing retain-on-failure \
+            --screenshot only-on-failure \
+            --html=reports/smoke-report.html \
+            --self-contained-html
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-report
+          path: |
+            reports/
+            test-results/
+          if-no-files-found: ignore
+
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout qa-framework
+        uses: actions/checkout@v4
+
+      - name: Checkout GarageCar
+        uses: actions/checkout@v4
+        with:
+          repository: TomatoFT/GarageCar
+          path: GarageCar
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Bootstrap GarageCar
+        working-directory: GarageCar
+        run: |
+          pip install -r requirements/dev.txt
+          python manage.py migrate
+          python manage.py seed_business_rules
+          python manage.py shell -c "
+          from django.contrib.auth.models import Group, User
+          from apps.accounts.models import StaffProfile
+          u, _ = User.objects.get_or_create(username='opera', defaults={'email': 'opera@example.com'})
+          u.set_password('1'); u.is_staff = True; u.is_superuser = True
+          u.first_name = 'Demo'; u.last_name = 'User'; u.save()
+          g, _ = Group.objects.get_or_create(name='ADMIN'); g.user_set.add(u)
+          StaffProfile.objects.update_or_create(user=u, defaults={'first_name': 'Demo', 'last_name': 'User', 'email': 'opera@example.com', 'mobile': '0900000000', 'address': 'Demo', 'is_admin': True})
+          "
+
+      - name: Seed E2E data
+        working-directory: .
+        env:
+          GARAGE_DIR: ${{ github.workspace }}/GarageCar
+        run: python scripts/seed_e2e_data.py
+
+      - name: Start Django server
+        working-directory: GarageCar
+        run: |
+          python manage.py runserver 8000 &
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/login/ && break
+            sleep 1
+          done
+
+      - name: Install test framework
+        working-directory: .
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+          cp .env.example .env
+          mkdir -p reports
+
+      - name: Run regression suite
+        run: |
+          pytest -m regression --browser chromium \
+            --tracing retain-on-failure \
+            --screenshot only-on-failure \
+            --html=reports/regression-report.html \
+            --self-contained-html \
+            --reruns 1
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: |
+            reports/
+            test-results/
+          if-no-files-found: ignore

@@ -1,0 +1,71 @@
+# Local one-command stack: GarageCar app + Playwright tests
+#
+# Usage:
+#   export GARAGE_DIR=../GarageCar   # path to cloned GarageCar repo
+#   docker compose up --abort-on-container-exit tests
+#
+# Or: ./scripts/docker-test.sh
+
+services:
+  garage:
+    image: python:3.11-slim
+    working_dir: /app
+    volumes:
+      - ${GARAGE_DIR:-../GarageCar}:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: garage_management.settings.dev
+      DEBUG: "True"
+    command: >
+      bash -c "
+        apt-get update -qq && apt-get install -y -qq curl &&
+        pip install -q -r requirements/dev.txt &&
+        python manage.py migrate &&
+        python manage.py seed_business_rules &&
+        python manage.py shell -c \"
+from django.contrib.auth.models import Group, User
+from apps.accounts.models import StaffProfile
+from apps.customers.models import VehicleBrand
+from apps.repairs.models import LaborRate
+u, _ = User.objects.get_or_create(username='opera', defaults={'email': 'opera@example.com'})
+u.set_password('1'); u.is_staff = True; u.is_superuser = True
+u.first_name = 'Demo'; u.last_name = 'User'; u.save()
+g, _ = Group.objects.get_or_create(name='ADMIN'); g.user_set.add(u)
+StaffProfile.objects.update_or_create(user=u, defaults={'first_name': 'Demo', 'last_name': 'User', 'email': 'opera@example.com', 'mobile': '0900000000', 'address': 'Demo', 'is_admin': True})
+VehicleBrand.objects.get_or_create(name='Toyota')
+LaborRate.objects.get_or_create(name='Thay dau', defaults={'amount': 200000})
+        \" &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/login/"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
+
+  tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tests
+    depends_on:
+      garage:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - ${GARAGE_DIR:-../GarageCar}:/garage
+    environment:
+      BASE_URL: http://garage:8000
+      GARAGE_DIR: /garage
+      LOGIN_PATH: /login/
+      DEMO_USERNAME: opera
+      DEMO_PASSWORD: "1"
+    command: >
+      pytest -m "smoke or regression"
+      --browser chromium
+      --tracing retain-on-failure
+      --screenshot only-on-failure
+      --html=reports/report.html
+      --self-contained-html

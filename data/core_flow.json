@@ -1,0 +1,18 @@
+{
+  "brand": "Toyota",
+  "labor_rate": {
+    "name": "Thay dau",
+    "amount": 200000,
+    "description": "Thay dau may"
+  },
+  "customer": {
+    "owner_name": "Nguyen Van Test",
+    "phone": "0901234567",
+    "address": "123 Le Loi, Ho Chi Minh City",
+    "vehicle_condition": "Xe rung ga khi tang toc",
+    "service_notes": "Thay dau, kiem tra phanh"
+  },
+  "payment": {
+    "partial_amount": 100000
+  }
+}

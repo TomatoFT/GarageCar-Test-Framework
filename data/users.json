@@ -1,0 +1,11 @@
+{
+  "valid_admin": {
+    "username": "opera",
+    "password": "1",
+    "role": "ADMIN"
+  },
+  "invalid": {
+    "username": "opera",
+    "password": "wrong-password"
+  }
+}

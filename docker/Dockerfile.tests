@@ -1,0 +1,9 @@
+FROM mcr.microsoft.com/playwright/python:v1.49.1-jammy
+
+WORKDIR /workspace
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Browsers are pre-installed in the Playwright image.
+ENV PYTHONUNBUFFERED=1

@@ -1,0 +1,10 @@
+{
+  "sample_ticket": {
+    "owner_name": "Nguyen Van A",
+    "license_plate": "51A-12345",
+    "phone": "0901234567",
+    "address": "Ho Chi Minh City",
+    "vehicle_condition": "Engine noise",
+    "service_notes": "Oil change and inspection"
+  }
+}
