@@ -28,6 +28,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install test framework dependencies
+        working-directory: .
+        run: pip install -r requirements.txt
+
       - name: Bootstrap GarageCar
         working-directory: GarageCar
         run: |
@@ -59,10 +63,9 @@ jobs:
             sleep 1
           done
 
-      - name: Install test framework
+      - name: Install Playwright browsers
         working-directory: .
         run: |
-          pip install -r requirements.txt
           playwright install --with-deps chromium
           cp .env.example .env
           mkdir -p reports
@@ -105,6 +108,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install test framework dependencies
+        working-directory: .
+        run: pip install -r requirements.txt
+
       - name: Bootstrap GarageCar
         working-directory: GarageCar
         run: |
@@ -136,10 +143,9 @@ jobs:
             sleep 1
           done
 
-      - name: Install test framework
+      - name: Install Playwright browsers
         working-directory: .
         run: |
-          pip install -r requirements.txt
           playwright install --with-deps chromium
           cp .env.example .env
           mkdir -p reports

@@ -1,11 +1,5 @@
-from utils.api_client import ApiClient
-from utils.data_loader import load_json
-from utils.helpers import unique_license_plate, unique_phone, wait_for_server
+"""Shared utilities for the test framework.
 
-__all__ = [
-    "ApiClient",
-    "load_json",
-    "unique_license_plate",
-    "unique_phone",
-    "wait_for_server",
-]
+Import submodules directly, e.g. ``from utils.garage_seed import seed_e2e_data``.
+Avoid eager imports here so scripts like ``seed_e2e_data.py`` do not require Playwright.
+"""
